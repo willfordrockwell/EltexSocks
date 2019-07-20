@@ -28,7 +28,7 @@ int main(int argc, char const *argv[]) // port
     Server_Addr.sin_port = Port;
 
     //init socket
-    if ((Server_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
+    if ((Server_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
         printf("Socket created: %d\n", Server_Socket);
     }
     else {
@@ -36,7 +36,8 @@ int main(int argc, char const *argv[]) // port
         exit(1);
     }
     //binding
-    if (bind(Server_Socket, (struct sockaddr *) &Server_Addr, sizeof(Server_Addr)) >= 0) {
+    if (bind(Server_Socket, (struct sockaddr *) &Server_Addr,
+             sizeof(Server_Addr)) >= 0) {
         printf("Succeesfully binded\n");
     }
     else {
@@ -47,34 +48,27 @@ int main(int argc, char const *argv[]) // port
     while (1) {
         //start listen
         bzero(&Client_Addr, sizeof(struct sockaddr_in));
-        listen(Server_Socket, MAX_CLIENTS);
         //get message from any client
-        if ((Client_Socket = accept(Server_Socket, (struct sockaddr *) &Client_Addr, &Client_Addr_Len)) >= 0) {
-            printf("Accpeted connection with client: %d\n", Client_Socket);
+        if ((recvfrom(Server_Socket, Message, MSG_LEN, MSG_WAITALL,
+                      (struct sockaddr *) &Client_Addr, &Client_Addr_Len))
+            >= 0) {
+            printf("Recieved message from client: %s\n", Message);
         }
         else {
-            printf("Accepting error: %s\n", strerror(errno));
+            printf("Recieving error: %s\n", strerror(errno));
             exit(3);
-        }
-        if (recv(Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
-            printf("Recieved from client: %s\n", Message);
-        }
-        else {
-            printf("Error on recieving message: %s\n", strerror(errno));
-            exit(4);
         }
         //change message
         *Message = '7';
         //send message to client
-        if (send(Client_Socket, Message, strlen(Message), NO_FLAGS) > 0) {
+        if (sendto(Server_Socket, Message, strlen(Message), MSG_CONFIRM,
+                   (struct sockaddr *) &Client_Addr, Client_Addr_Len) > 0) {
             printf("Send to client: %s\n", Message);
         }
         else {
             printf("Error on sendig message: %s\n", strerror(errno));
-            exit(5);
+            exit(4);
         }
-        //remove socket
-        shutdown(Client_Socket, SHUT_RDWR);
     }
     return 0;
 }

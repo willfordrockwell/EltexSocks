@@ -33,7 +33,7 @@ int main(int argc, char const *argv[]) //IP server, Port server
     inet_pton(AF_INET, Server_IP, &(Server_Addr.sin_addr));
     Server_Addr.sin_port = Port;
 
-    if ((Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
+    if ((Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
         printf("Socket created: %d\n", Socket);
     }
     else {
@@ -41,20 +41,13 @@ int main(int argc, char const *argv[]) //IP server, Port server
         exit(1);
     }
 
-    if (connect(Socket, (struct sockaddr *) &Server_Addr, Server_Addr_Len) >= 0) {
-        printf("Connected with server\n");
-    }
-    else {
-        printf("Connection to server error: %s\n", strerror(errno));
-        exit(2);
-    }
-
     printf("Type message to server\n");
 
     fgets(Message, MSG_LEN, stdin);
     *(Message + strlen(Message)) = '\0';
 
-    if (send(Socket, Message, strlen(Message), NO_FLAGS) > 0) {
+    if (sendto(Socket, Message, strlen(Message), MSG_CONFIRM,
+               (struct sockaddr *) &Server_Addr, Server_Addr_Len) > 0) {
         printf("Send to server: %s\n", Message);
     }
     else {
@@ -62,13 +55,14 @@ int main(int argc, char const *argv[]) //IP server, Port server
         exit(3);
     }
     memset(Message, 0, MSG_LEN);
-    if (recv(Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
+    if (recvfrom(Socket, Message, MSG_LEN, MSG_WAITALL,
+                 (struct sockaddr *) &Server_Addr, &Server_Addr_Len) > 0) {
         printf("Recieved from server: %s\n", Message);
     }
     else {
         printf("Error on recieving message: %s\n", strerror(errno));
         exit(4);
     }
-    shutdown(Socket, SHUT_RDWR);
+    close(Socket);
     return 0;
 }
