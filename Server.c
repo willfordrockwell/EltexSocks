@@ -8,6 +8,8 @@ int main(int argc, char const *argv[]) // port
     char Port_Str[PORT_LENGTH];
     int Port;
 
+    pthread_t Tid;
+
     int Server_Socket;
     int Client_Socket;
 
@@ -36,7 +38,8 @@ int main(int argc, char const *argv[]) // port
         exit(1);
     }
     //binding
-    if (bind(Server_Socket, (struct sockaddr *) &Server_Addr, sizeof(Server_Addr)) >= 0) {
+    if (bind(Server_Socket, (struct sockaddr *) &Server_Addr,
+             sizeof(Server_Addr)) >= 0) {
         printf("Succeesfully binded\n");
     }
     else {
@@ -49,32 +52,23 @@ int main(int argc, char const *argv[]) // port
         bzero(&Client_Addr, sizeof(struct sockaddr_in));
         listen(Server_Socket, MAX_CLIENTS);
         //get message from any client
-        if ((Client_Socket = accept(Server_Socket, (struct sockaddr *) &Client_Addr, &Client_Addr_Len)) >= 0) {
+        if ((Client_Socket = accept(Server_Socket,
+                                    (struct sockaddr *) &Client_Addr,
+                                    &Client_Addr_Len)) >= 0) {
             printf("Accpeted connection with client: %d\n", Client_Socket);
         }
         else {
             printf("Accepting error: %s\n", strerror(errno));
             exit(3);
         }
-        if (recv(Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
-            printf("Recieved from client: %s\n", Message);
+        if (pthread_create(&Tid, NULL, Server_Thread, &Client_Socket) == 0) {
+            printf("Thread %d was created to work with %d\n", Tid,
+                   Client_Socket);
         }
         else {
-            printf("Error on recieving message: %s\n", strerror(errno));
+            printf("Error creare Thread: %s\n", strerror(errno));
             exit(4);
         }
-        //change message
-        *Message = '7';
-        //send message to client
-        if (send(Client_Socket, Message, strlen(Message), NO_FLAGS) > 0) {
-            printf("Send to client: %s\n", Message);
-        }
-        else {
-            printf("Error on sendig message: %s\n", strerror(errno));
-            exit(5);
-        }
-        //remove socket
-        shutdown(Client_Socket, SHUT_RDWR);
     }
     return 0;
 }
