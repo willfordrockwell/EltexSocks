@@ -30,7 +30,7 @@ int main(int argc, char const *argv[]) // port
     Server_Addr.sin_port = Port;
 
     //init socket
-    if ((Server_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
+    if ((Server_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
         printf("Socket created: %d\n", Server_Socket);
     }
     else {
@@ -50,15 +50,15 @@ int main(int argc, char const *argv[]) // port
     while (1) {
         //start listen
         bzero(&Client_Addr, sizeof(struct sockaddr_in));
-        listen(Server_Socket, MAX_CLIENTS);
         //get message from any client
+
         if ((Client_Socket = accept(Server_Socket,
                                     (struct sockaddr *) &Client_Addr,
                                     &Client_Addr_Len)) >= 0) {
             printf("Accpeted connection with client: %d\n", Client_Socket);
         }
         else {
-            printf("Accepting error: %s\n", strerror(errno));
+            printf("Recieving error: %s\n", strerror(errno));
             exit(3);
         }
         if (pthread_create(&Tid, NULL, Server_Thread, &Client_Socket) == 0) {

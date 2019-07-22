@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 
@@ -15,4 +16,4 @@
 
 void Get_Port(char *Auto_Port, char *Server_Port);
 void Get_IP(char* Auto_IP, char *Server_IP);
-void *Server_Thread (void *arg);
+void *Server_Thread(void *arg);
