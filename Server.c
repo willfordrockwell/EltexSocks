@@ -8,6 +8,8 @@ int main(int argc, char const *argv[]) // port
     char Port_Str[PORT_LENGTH];
     int Port;
 
+    pthread_t Tid;
+
     int Server_Socket;
     int Client_Socket;
 
@@ -58,9 +60,10 @@ int main(int argc, char const *argv[]) // port
             printf("Recieving error: %s\n", strerror(errno));
             exit(3);
         }
-        //change message
-        *Message = '7';
-        //send message to client
+
+        //Sending new port to Client
+        memset(Message, 0, MSG_LEN);
+        sprintf(Message, "%d", ++Port);
         if (sendto(Server_Socket, Message, strlen(Message), MSG_CONFIRM,
                    (struct sockaddr *) &Client_Addr, Client_Addr_Len) > 0) {
             printf("Send to client: %s\n", Message);
@@ -68,6 +71,15 @@ int main(int argc, char const *argv[]) // port
         else {
             printf("Error on sendig message: %s\n", strerror(errno));
             exit(4);
+        }
+
+        //create thread no new client
+        if (pthread_create(&Tid, NULL, Server_Thread, (void *)Port) == 0) {
+            printf("Thread %d created to Client\n");
+        }
+        else {
+            printf("Error creating thread: %s\n", strerror(errno));
+            exit(5);
         }
     }
     return 0;
