@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,3 +16,4 @@
 
 void Get_Port(char *Auto_Port, char *Server_Port);
 void Get_IP(char* Auto_IP, char *Server_IP);
+void *Server_Thread(void *arg);
