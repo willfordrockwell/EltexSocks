@@ -2,60 +2,32 @@
 
 void *Server_Thread (void *arg)
 {
-    int Port = (int)arg;
     char Message[MSG_LEN];
+    int Client_Socket = *((int*)arg);
 
-    int Server_Socket;
-    int Client_Socket;
-
-    struct sockaddr_in Server_Addr, Client_Addr;
-    socklen_t Client_Addr_Len = sizeof(Client_Addr);
-    bzero(&Server_Addr, sizeof(struct sockaddr_in));
-
-    Server_Addr.sin_family = AF_INET;
-    Server_Addr.sin_addr.s_addr = INADDR_ANY;
-    Server_Addr.sin_port = Port;
-
-     //init socket
-    if ((Server_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
-        printf("Thread Socket created: %d\n", Server_Socket);
+    if (recv(Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
+            printf("Recieved from client: %s\n", Message);
     }
     else {
-        printf("Thread Error creating socket: %s\n", strerror(errno));
-        exit(6);
+        printf("Error on recieving message: %s\n", strerror(errno));
+        exit(5);
     }
-    //binding
-    if (bind(Server_Socket, (struct sockaddr *) &Server_Addr,
-             sizeof(Server_Addr)) >= 0) {
-        printf("Thread Succeesfully binded\n");
-    }
-    else {
-        printf("Thread Error on binding: %s\n", strerror(errno));
-        exit(7);
-    }
-
-    bzero(&Client_Addr, sizeof(struct sockaddr_in));
-    //get message from any client
-    if ((recvfrom(Server_Socket, Message, MSG_LEN, MSG_WAITALL,
-                  (struct sockaddr *) &Client_Addr, &Client_Addr_Len))
-        >= 0) {
-        printf("Thread Recieved message from client: %s\n", Message);
-    }
-    else {
-        printf("Thread Recieving error: %s\n", strerror(errno));
-        exit(8);
-    }
-
     //change message
     *Message = '7';
     //send message to client
-    if (sendto(Server_Socket, Message, strlen(Message), MSG_CONFIRM,
-               (struct sockaddr *) &Client_Addr, Client_Addr_Len) > 0) {
-        printf("Thread Send to client: %s\n", Message);
+    if (send(Client_Socket, Message, strlen(Message), NO_FLAGS) > 0) {
+        printf("Send to client: %s\n", Message);
     }
     else {
-        printf("Thread Error on sendig message: %s\n", strerror(errno));
-        exit(9);
+        printf("Error on sendig message: %s\n", strerror(errno));
+        exit(6);
     }
-    close(Server_Socket);
+    //remove socket
+    if (shutdown(Client_Socket, SHUT_RDWR) == 0) {
+        printf("Successfully shutdown socket\n");
+    }
+    else {
+        printf("Error on shutdown socket: %s\n", strerror(errno));
+        exit(7);
+    }
 }

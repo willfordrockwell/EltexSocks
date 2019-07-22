@@ -42,20 +42,9 @@ int main(int argc, char const *argv[]) //IP server, Port server
         exit(1);
     }
 
-    strcpy(Message, "Needed Thread!");
-
-    if (sendto(Socket, Message, strlen(Message), MSG_CONFIRM,
-               (struct sockaddr *) &Server_Addr, Server_Addr_Len) > 0) {
-        printf("Send to server: %s\n", Message);
-    }
-    else {
-        printf("Error on sendig message: %s\n", strerror(errno));
-        exit(3);
-    }
-    memset(Message, 0, MSG_LEN);
-    if (recvfrom(Socket, Message, MSG_LEN, MSG_WAITALL,
-                 (struct sockaddr *) &Server_Addr, &Server_Addr_Len) > 0) {
-        printf("Recieved from server: %s\n", Message);
+    if (connect(Socket, (struct sockaddr *) &Server_Addr, Server_Addr_Len)
+        >= 0) {
+        printf("Connected with server\n");
     }
     else {
         printf("Error on recieving message: %s\n", strerror(errno));
