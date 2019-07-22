@@ -41,7 +41,8 @@ int main(int argc, char const *argv[]) //IP server, Port server
         exit(1);
     }
 
-    if (connect(Socket, (struct sockaddr *) &Server_Addr, Server_Addr_Len) >= 0) {
+    if (connect(Socket, (struct sockaddr *) &Server_Addr, Server_Addr_Len)
+        >= 0) {
         printf("Connected with server\n");
     }
     else {
