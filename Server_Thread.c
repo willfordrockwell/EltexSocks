@@ -3,7 +3,16 @@
 void *Server_Thread (void *arg)
 {
     char Message[MSG_LEN];
-    int Client_Socket = *((int*)arg);
+    int idQueue = *((int*)arg);
+
+    int Client_Socket;
+
+    struct Queue From_Parent;
+
+    msgrcv(idQueue, &From_Parent, sizeof(From_Parent) - sizeof(long), 
+           pthread_self(), NO_FLAGS);
+
+    Client_Socket = From_Parent.Client_Socket;
 
     if (recv(Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
             printf("Recieved from client: %s\n", Message);

@@ -2,6 +2,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/msg.h>
+#include <sys/ipc.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -12,6 +14,11 @@
 #define MAX_CLIENTS 5
 #define MSG_LEN 80
 #define NO_FLAGS 0
+
+struct Queue {
+    long mtype;
+    int Client_Socket;
+};
 
 void Get_Port(char *Auto_Port, char *Server_Port);
 void Get_IP(char* Auto_IP, char *Server_IP);

@@ -10,6 +10,8 @@ int main(int argc, char const *argv[]) // port
 
     pthread_t Tid;
 
+    int idQueue;
+
     int Server_Socket;
     int Client_Socket;
 
@@ -28,6 +30,16 @@ int main(int argc, char const *argv[]) // port
     Server_Addr.sin_family = AF_INET;
     Server_Addr.sin_addr.s_addr = INADDR_ANY;
     Server_Addr.sin_port = Port;
+
+    //init queue
+    if ((idQueue = msgget(ftok("Server.elf", 1), 0600 | IPC_CREAT)) != -1) {
+        printf("Queue was created\n");
+    }
+    else {
+        printf("Queue was not created\n");
+    }
+
+    struct Queue To_Thread;
 
     //init socket
     if ((Server_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
@@ -61,7 +73,8 @@ int main(int argc, char const *argv[]) // port
             printf("Accepting error: %s\n", strerror(errno));
             exit(3);
         }
-        if (pthread_create(&Tid, NULL, Server_Thread, &Client_Socket) == 0) {
+
+        if (pthread_create(&Tid, NULL, Server_Thread, &idQueue) == 0) {
             printf("Thread %d was created to work with %d\n", Tid,
                    Client_Socket);
         }
@@ -69,6 +82,9 @@ int main(int argc, char const *argv[]) // port
             printf("Error creare Thread: %s\n", strerror(errno));
             exit(4);
         }
+        To_Thread.mtype = Tid;
+        To_Thread.Client_Socket = Client_Socket;
+        msgsnd(idQueue, &To_Thread, sizeof(To_Thread) - sizeof(long), NO_FLAGS);
     }
     return 0;
 }
