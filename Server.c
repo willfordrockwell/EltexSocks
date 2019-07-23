@@ -1,42 +1,63 @@
 #include "server.h"
 
-int main(int argc, char const *argv[]) // port
+int main(int argc, char const *argv[]) // TCP port UDP port
 {
     char Message[MSG_LEN];
     memset(Message, 0, MSG_LEN);
 
-    char Port_Str[PORT_LENGTH];
-    int Port;
+    char TCP_Port_Str[PORT_LENGTH];
+    int TCP_Port;
 
-    int Server_Socket;
-    int Client_Socket;
+    char UDP_Port_Str[PORT_LENGTH];
+    int UDP_Port;
 
-    struct sockaddr_in Server_Addr, Client_Addr;
-    socklen_t Client_Addr_Len = sizeof(Client_Addr);
-    bzero(&Server_Addr, sizeof(struct sockaddr_in));
+    int TCP_Server_Socket;
+    int TCP_Client_Socket;
 
-    if (argc < 2) { // no Port as paramater
-        Get_Port("12345", Port_Str);
+    int UDP_Server_Socket;
+
+    int Max_Socket;
+
+    struct timeval Time_Out;
+
+    fd_set Sockets;
+
+    struct sockaddr_in TCP_Server_Addr, UDP_Server_Addr, TCP_Client_Addr,
+                       UDP_Client_Addr;
+    socklen_t TCP_Client_Addr_Len = sizeof(TCP_Client_Addr);
+    socklen_t UDP_Client_Addr_Len = sizeof(UDP_Client_Addr);
+    bzero(&TCP_Server_Addr, sizeof(struct sockaddr_in));
+
+    if (argc < 3) { // no Ports as paramater
+        Get_Port("12345", TCP_Port_Str);
+        Get_Port("12346", UDP_Port_Str);
     }
     else {
-        strcpy(Port_Str, argv[1]);
+        strcpy(TCP_Port_Str, argv[1]);
+        strcpy(UDP_Port_Str, argv[2]);
     }
-    Port = htons(atoi(Port_Str));
+    TCP_Port = htons(atoi(TCP_Port_Str));
+    UDP_Port = htons(atoi(UDP_Port_Str));
 
-    Server_Addr.sin_family = AF_INET;
-    Server_Addr.sin_addr.s_addr = INADDR_ANY;
-    Server_Addr.sin_port = Port;
+    TCP_Server_Addr.sin_family = AF_INET;
+    TCP_Server_Addr.sin_addr.s_addr = INADDR_ANY;
+    TCP_Server_Addr.sin_port = TCP_Port;
 
-    //init socket
-    if ((Server_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
-        printf("Socket created: %d\n", Server_Socket);
+    UDP_Server_Addr.sin_family = AF_INET;
+    UDP_Server_Addr.sin_addr.s_addr = INADDR_ANY;
+    UDP_Server_Addr.sin_port = UDP_Port;
+
+    //init tcp socket
+    if ((TCP_Server_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
+        printf("Socket created: %d\n", TCP_Server_Socket);
     }
     else {
         printf("Error creating socket: %s\n", strerror(errno));
         exit(1);
     }
-    //binding
-    if (bind(Server_Socket, (struct sockaddr *) &Server_Addr, sizeof(Server_Addr)) >= 0) {
+    //binding tcp
+    if (bind(TCP_Server_Socket, (struct sockaddr *) &TCP_Server_Addr,
+             sizeof(TCP_Server_Addr)) >= 0) {
         printf("Succeesfully binded\n");
     }
     else {
@@ -44,37 +65,102 @@ int main(int argc, char const *argv[]) // port
         exit(2);
     }
 
+    //init udp socket
+    if ((UDP_Server_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
+        printf("Socket created: %d\n", UDP_Server_Socket);
+    }
+    else {
+        printf("Error creating socket: %s\n", strerror(errno));
+        exit(3);
+    }
+    //binding tcp
+    if (bind(UDP_Server_Socket, (struct sockaddr *) &UDP_Server_Addr,
+             sizeof(UDP_Server_Addr)) >= 0) {
+        printf("Succeesfully binded\n");
+    }
+    else {
+        printf("Error on binding: %s\n", strerror(errno));
+        exit(4);
+    }
+
+    Max_Socket =
+        TCP_Server_Socket > UDP_Server_Socket ?
+        TCP_Client_Socket + 1 : UDP_Server_Socket + 1;
+    //start listen
+    bzero(&TCP_Client_Addr, sizeof(struct sockaddr_in));
+    listen(TCP_Server_Socket, MAX_CLIENTS);
+
     while (1) {
-        //start listen
-        bzero(&Client_Addr, sizeof(struct sockaddr_in));
-        listen(Server_Socket, MAX_CLIENTS);
-        //get message from any client
-        if ((Client_Socket = accept(Server_Socket, (struct sockaddr *) &Client_Addr, &Client_Addr_Len)) >= 0) {
-            printf("Accpeted connection with client: %d\n", Client_Socket);
+        FD_ZERO(&Sockets);
+        FD_SET(TCP_Server_Socket, &Sockets);
+        FD_SET(UDP_Server_Socket, &Sockets);
+
+        Time_Out.tv_sec = 1;
+        Time_Out.tv_usec = 0;
+
+        select(Max_Socket, &Sockets, 0, 0, &Time_Out);
+        //check tcp
+        if(FD_ISSET(TCP_Server_Socket, &Sockets)) {
+            //get message from any client via tcp
+            if ((TCP_Client_Socket = accept(TCP_Server_Socket,
+                                            (struct sockaddr *) &TCP_Client_Addr,
+                                            &TCP_Client_Addr_Len)) >= 0) {
+                printf("Accpeted connection with client: %d\n", TCP_Client_Socket);
+            }
+            else {
+                printf("Accepting error: %s\n", strerror(errno));
+                exit(5);
+            }
+            if (recv(TCP_Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
+                printf("Recieved from client: %s\n", Message);
+            }
+            else {
+                printf("Error on recieving message: %s\n", strerror(errno));
+                exit(6);
+            }
+            //change message
+            *Message = '7';
+            //send message to client
+            if (send(TCP_Client_Socket, Message, strlen(Message), NO_FLAGS)
+                > 0) {
+                printf("Send to client: %s\n", Message);
+            }
+            else {
+                printf("Error on sendig message: %s\n", strerror(errno));
+                exit(7);
+            }
+            //remove socket
+            shutdown(TCP_Client_Socket, SHUT_RDWR);
         }
-        else {
-            printf("Accepting error: %s\n", strerror(errno));
-            exit(3);
+        //check udp
+        if (FD_ISSET(UDP_Server_Socket, &Sockets)) {
+            //start listen
+            bzero(&UDP_Client_Addr, sizeof(struct sockaddr_in));
+            //get message from any client
+            if ((recvfrom(UDP_Server_Socket, Message, MSG_LEN, MSG_WAITALL,
+                          (struct sockaddr *) &UDP_Client_Addr,
+                          &UDP_Client_Addr_Len)) >= 0) {
+                printf("Recieved message from client: %s\n", Message);
+            }
+            else {
+                printf("Recieving error: %s\n", strerror(errno));
+                exit(8);
+            }
+
+            //change message
+            *Message = '7';
+            //send message to client
+            if (sendto(UDP_Server_Socket, Message, strlen(Message),
+                       MSG_CONFIRM, (struct sockaddr *) &UDP_Client_Addr,
+                       UDP_Client_Addr_Len) > 0) {
+                printf("Thread Send to client: %s\n", Message);
+            }
+            else {
+                printf("Thread Error on sendig message: %s\n",
+                       strerror(errno));
+                exit(9);
+            }
         }
-        if (recv(Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
-            printf("Recieved from client: %s\n", Message);
-        }
-        else {
-            printf("Error on recieving message: %s\n", strerror(errno));
-            exit(4);
-        }
-        //change message
-        *Message = '7';
-        //send message to client
-        if (send(Client_Socket, Message, strlen(Message), NO_FLAGS) > 0) {
-            printf("Send to client: %s\n", Message);
-        }
-        else {
-            printf("Error on sendig message: %s\n", strerror(errno));
-            exit(5);
-        }
-        //remove socket
-        shutdown(Client_Socket, SHUT_RDWR);
     }
     return 0;
 }
