@@ -16,11 +16,7 @@ int main(int argc, char const *argv[]) // TCP port UDP port
 
     int UDP_Server_Socket;
 
-    int Max_Socket;
-
-    struct timeval Time_Out;
-
-    fd_set Sockets;
+    struct pollfd Sockets[NUM_SOCKETS];
 
     struct sockaddr_in TCP_Server_Addr, UDP_Server_Addr, TCP_Client_Addr,
                        UDP_Client_Addr;
@@ -29,7 +25,9 @@ int main(int argc, char const *argv[]) // TCP port UDP port
     bzero(&TCP_Server_Addr, sizeof(struct sockaddr_in));
 
     if (argc < 3) { // no Ports as paramater
+        printf("TCP:\n");
         Get_Port("12345", TCP_Port_Str);
+        printf("UDP:\n");
         Get_Port("12346", UDP_Port_Str);
     }
     else {
@@ -83,24 +81,20 @@ int main(int argc, char const *argv[]) // TCP port UDP port
         exit(4);
     }
 
-    Max_Socket =
-        TCP_Server_Socket > UDP_Server_Socket ?
-        TCP_Client_Socket + 1 : UDP_Server_Socket + 1;
+    Sockets[0].fd = TCP_Server_Socket;
+    Sockets[0].events = POLLIN;
+
+    Sockets[1].fd = UDP_Server_Socket;
+    Sockets[1].events = POLLIN;
+
     //start listen
     bzero(&TCP_Client_Addr, sizeof(struct sockaddr_in));
     listen(TCP_Server_Socket, MAX_CLIENTS);
 
     while (1) {
-        FD_ZERO(&Sockets);
-        FD_SET(TCP_Server_Socket, &Sockets);
-        FD_SET(UDP_Server_Socket, &Sockets);
-
-        Time_Out.tv_sec = 1;
-        Time_Out.tv_usec = 0;
-
-        select(Max_Socket, &Sockets, 0, 0, &Time_Out);
+        poll(Sockets, NUM_SOCKETS, TIME_OUT);
         //check tcp
-        if(FD_ISSET(TCP_Server_Socket, &Sockets)) {
+        if(Sockets[0].revents == POLLIN) {
             //get message from any client via tcp
             if ((TCP_Client_Socket = accept(TCP_Server_Socket,
                                             (struct sockaddr *) &TCP_Client_Addr,
@@ -133,7 +127,7 @@ int main(int argc, char const *argv[]) // TCP port UDP port
             shutdown(TCP_Client_Socket, SHUT_RDWR);
         }
         //check udp
-        if (FD_ISSET(UDP_Server_Socket, &Sockets)) {
+        if (Sockets[1].revents == POLLIN) {
             //start listen
             bzero(&UDP_Client_Addr, sizeof(struct sockaddr_in));
             //get message from any client
@@ -153,10 +147,10 @@ int main(int argc, char const *argv[]) // TCP port UDP port
             if (sendto(UDP_Server_Socket, Message, strlen(Message),
                        MSG_CONFIRM, (struct sockaddr *) &UDP_Client_Addr,
                        UDP_Client_Addr_Len) > 0) {
-                printf("Thread Send to client: %s\n", Message);
+                printf("Send to client: %s\n", Message);
             }
             else {
-                printf("Thread Error on sendig message: %s\n",
+                printf("Error on sendig message: %s\n",
                        strerror(errno));
                 exit(9);
             }
