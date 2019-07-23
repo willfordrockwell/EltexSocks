@@ -16,7 +16,8 @@ int main(int argc, char const *argv[]) // TCP port UDP port
 
     int UDP_Server_Socket;
 
-    struct pollfd Sockets[NUM_SOCKETS];
+    struct epoll_event Ev, Events[MAX_EVENTS];
+    int Events_Num, Events_fd;
 
     struct sockaddr_in TCP_Server_Addr, UDP_Server_Addr, TCP_Client_Addr,
                        UDP_Client_Addr;
@@ -81,78 +82,90 @@ int main(int argc, char const *argv[]) // TCP port UDP port
         exit(4);
     }
 
-    Sockets[0].fd = TCP_Server_Socket;
-    Sockets[0].events = POLLIN;
+    Events_fd = epoll_create1(NO_FLAGS);
 
-    Sockets[1].fd = UDP_Server_Socket;
-    Sockets[1].events = POLLIN;
+    Ev.events = EPOLLIN;
+    Ev.data.fd = TCP_Server_Socket;
 
+    epoll_ctl(Events_fd, EPOLL_CTL_ADD, TCP_Server_Socket, &Ev);
+
+    Ev.data.fd = UDP_Server_Socket;
+
+    epoll_ctl(Events_fd, EPOLL_CTL_ADD, UDP_Server_Socket, &Ev);
+    
     //start listen
     bzero(&TCP_Client_Addr, sizeof(struct sockaddr_in));
     listen(TCP_Server_Socket, MAX_CLIENTS);
 
     while (1) {
-        poll(Sockets, NUM_SOCKETS, TIME_OUT);
-        //check tcp
-        if(Sockets[0].revents == POLLIN) {
-            //get message from any client via tcp
-            if ((TCP_Client_Socket = accept(TCP_Server_Socket,
-                                            (struct sockaddr *) &TCP_Client_Addr,
-                                            &TCP_Client_Addr_Len)) >= 0) {
-                printf("Accpeted connection with client: %d\n", TCP_Client_Socket);
-            }
-            else {
-                printf("Accepting error: %s\n", strerror(errno));
-                exit(5);
-            }
-            if (recv(TCP_Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
-                printf("Recieved from client: %s\n", Message);
-            }
-            else {
-                printf("Error on recieving message: %s\n", strerror(errno));
-                exit(6);
-            }
-            //change message
-            *Message = '7';
-            //send message to client
-            if (send(TCP_Client_Socket, Message, strlen(Message), NO_FLAGS)
-                > 0) {
-                printf("Send to client: %s\n", Message);
-            }
-            else {
-                printf("Error on sendig message: %s\n", strerror(errno));
-                exit(7);
-            }
-            //remove socket
-            shutdown(TCP_Client_Socket, SHUT_RDWR);
+        Events_Num = epoll_wait(Events_fd, Events, MAX_EVENTS, TIME_OUT);
+        if (Events_Num == -1) {
+            printf("epoll_wait error: %s\n", strerror(errno));
+            exit(5);
         }
-        //check udp
-        if (Sockets[1].revents == POLLIN) {
-            //start listen
-            bzero(&UDP_Client_Addr, sizeof(struct sockaddr_in));
-            //get message from any client
-            if ((recvfrom(UDP_Server_Socket, Message, MSG_LEN, MSG_WAITALL,
-                          (struct sockaddr *) &UDP_Client_Addr,
-                          &UDP_Client_Addr_Len)) >= 0) {
-                printf("Recieved message from client: %s\n", Message);
+        for (int i = 0; i < Events_Num; i++) {
+            //check tcp
+            if (Events[i].data.fd == TCP_Server_Socket) {
+                //get message from any client via tcp
+                TCP_Client_Socket = accept(TCP_Server_Socket,
+                                          (struct sockaddr *) &TCP_Client_Addr,
+                                          &TCP_Client_Addr_Len);
+                if (TCP_Client_Socket >= 0) {
+                printf("Accpeted connection with client: %d\n", TCP_Client_Socket);
+                }
+                else {
+                    printf("Accepting error: %s\n", strerror(errno));
+                    exit(5);
+                }
+                if (recv(TCP_Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
+                    printf("Recieved from client: %s\n", Message);
+                }
+                else {
+                    printf("Error on recieving message: %s\n", strerror(errno));
+                    exit(6);
+                }
+                //change message
+                *Message = '7';
+                //send message to client
+                if (send(TCP_Client_Socket, Message, strlen(Message), NO_FLAGS)
+                    > 0) {
+                    printf("Send to client: %s\n", Message);
+                }
+                else {
+                    printf("Error on sendig message: %s\n", strerror(errno));
+                    exit(7);
+                }
+                //remove socket
+                shutdown(TCP_Client_Socket, SHUT_RDWR);
             }
-            else {
-                printf("Recieving error: %s\n", strerror(errno));
-                exit(8);
-            }
+            //check udp
+            if (Events[i].data.fd == UDP_Server_Socket) {
+                //start listen
+                bzero(&UDP_Client_Addr, sizeof(struct sockaddr_in));
+                //get message from any client
+                if ((recvfrom(UDP_Server_Socket, Message, MSG_LEN, MSG_WAITALL,
+                              (struct sockaddr *) &UDP_Client_Addr,
+                              &UDP_Client_Addr_Len)) >= 0) {
+                    printf("Recieved message from client: %s\n", Message);
+                }
+                else {
+                    printf("Recieving error: %s\n", strerror(errno));
+                    exit(8);
+                }
 
-            //change message
-            *Message = '7';
-            //send message to client
-            if (sendto(UDP_Server_Socket, Message, strlen(Message),
-                       MSG_CONFIRM, (struct sockaddr *) &UDP_Client_Addr,
-                       UDP_Client_Addr_Len) > 0) {
-                printf("Send to client: %s\n", Message);
-            }
-            else {
-                printf("Error on sendig message: %s\n",
-                       strerror(errno));
-                exit(9);
+                //change message
+                *Message = '7';
+                //send message to client
+                if (sendto(UDP_Server_Socket, Message, strlen(Message),
+                           MSG_CONFIRM, (struct sockaddr *) &UDP_Client_Addr,
+                           UDP_Client_Addr_Len) > 0) {
+                    printf("Send to client: %s\n", Message);
+                }
+                else {
+                    printf("Error on sendig message: %s\n",
+                           strerror(errno));
+                    exit(9);
+                }
             }
         }
     }
