@@ -33,7 +33,7 @@ int main(int argc, char const *argv[]) //IP server, Port server
     inet_pton(AF_INET, Server_IP, &(Server_Addr.sin_addr));
     Server_Addr.sin_port = Port;
 
-    //Connect to Server to get actual port
+    //Connect to Server
     if ((Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
         printf("Socket created: %d\n", Socket);
     }
@@ -42,32 +42,7 @@ int main(int argc, char const *argv[]) //IP server, Port server
         exit(1);
     }
 
-    strcpy(Message, "Needed Thread!");
-
-    if (sendto(Socket, Message, strlen(Message), MSG_CONFIRM,
-               (struct sockaddr *) &Server_Addr, Server_Addr_Len) > 0) {
-        printf("Send to server: %s\n", Message);
-    }
-    else {
-        printf("Error on sendig message: %s\n", strerror(errno));
-        exit(3);
-    }
-    memset(Message, 0, MSG_LEN);
-    if (recvfrom(Socket, Message, MSG_LEN, MSG_WAITALL,
-                 (struct sockaddr *) &Server_Addr, &Server_Addr_Len) > 0) {
-        printf("Recieved from server: %s\n", Message);
-    }
-    else {
-        printf("Error on recieving message: %s\n", strerror(errno));
-        exit(4);
-    }
-
-    //Setting to new Thread
-    Port = atoi(Message);
-
-    Server_Addr.sin_port = Port;
-
-    //Send a message to Thread
+    //Send a message to Server
     printf("Type message to server\n");
 
     fgets(Message, MSG_LEN, stdin);
@@ -79,7 +54,7 @@ int main(int argc, char const *argv[]) //IP server, Port server
     }
     else {
         printf("Error on sendig message: %s\n", strerror(errno));
-        exit(3);
+        exit(2);
     }
     memset(Message, 0, MSG_LEN);
     if (recvfrom(Socket, Message, MSG_LEN, MSG_WAITALL,
@@ -88,7 +63,7 @@ int main(int argc, char const *argv[]) //IP server, Port server
     }
     else {
         printf("Error on recieving message: %s\n", strerror(errno));
-        exit(4);
+        exit(3);
     }
     close(Socket);
     return 0;

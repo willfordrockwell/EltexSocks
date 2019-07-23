@@ -1,4 +1,4 @@
-CCFLAGS = -lpthread
+CCFLAGS =
 CC = gcc
 
 SOURCES_SERVER = Server.c
