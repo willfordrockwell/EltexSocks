@@ -2,15 +2,26 @@
 
 void *Server_Thread (void *arg)
 {
-    int Port = (int)arg;
+    struct Queue From_Parent;
+    int idQueue = *((int*)arg);
+    int Port;
+
     char Message[MSG_LEN];
 
     int Server_Socket;
-    int Client_Socket;
 
     struct sockaddr_in Server_Addr, Client_Addr;
     socklen_t Client_Addr_Len = sizeof(Client_Addr);
     bzero(&Server_Addr, sizeof(struct sockaddr_in));
+
+    if (msgrcv(idQueue, &From_Parent, sizeof(From_Parent) - sizeof(long), pthread_self(), NO_FLAGS ) > 0) {
+        printf("Msg was recieved\n");
+    }
+    else {
+        printf("Msg was not recieved: %s\n", strerror(errno));
+    }
+
+    Port = From_Parent.Port;
 
     Server_Addr.sin_family = AF_INET;
     Server_Addr.sin_addr.s_addr = INADDR_ANY;

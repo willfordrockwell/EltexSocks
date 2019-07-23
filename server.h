@@ -2,11 +2,18 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+
+struct Queue {
+    long mtype;
+    int Port;
+};
 
 #define PORT_LENGTH 6
 #define IP_LENGTH 17

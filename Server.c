@@ -8,6 +8,10 @@ int main(int argc, char const *argv[]) // port
     char Port_Str[PORT_LENGTH];
     int Port;
 
+    int idQueue;
+
+    struct Queue To_Threads;
+
     pthread_t Tid;
 
     int Server_Socket;
@@ -28,6 +32,13 @@ int main(int argc, char const *argv[]) // port
     Server_Addr.sin_family = AF_INET;
     Server_Addr.sin_addr.s_addr = INADDR_ANY;
     Server_Addr.sin_port = Port;
+
+    if ((idQueue = msgget(ftok("Server.elf", 1), 0600 | IPC_CREAT)) != -1) {
+        printf("Queue %d was creted\n", idQueue);
+    }
+    else {
+        printf("Queue was not created: %s\n", strerror(errno));
+    }
 
     //init socket
     if ((Server_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
@@ -74,12 +85,25 @@ int main(int argc, char const *argv[]) // port
         }
 
         //create thread no new client
-        if (pthread_create(&Tid, NULL, Server_Thread, (void *)Port) == 0) {
+        if (pthread_create(&Tid, NULL, Server_Thread, &idQueue) == 0) {
             printf("Thread %d created to Client\n");
         }
         else {
             printf("Error creating thread: %s\n", strerror(errno));
             exit(5);
+        }
+
+        //make message for thread
+        To_Threads.mtype = Tid;
+        To_Threads.Port = Port;
+
+        //send message to thread
+        if (msgsnd(idQueue, &To_Threads, sizeof(To_Threads) - sizeof(long), NO_FLAGS) != -1 ) {
+            printf("Msg was sended\n");
+        }
+        else {
+            printf("Msg was not sended: %s\n", strerror(errno));
+            exit(6);
         }
     }
     return 0;
