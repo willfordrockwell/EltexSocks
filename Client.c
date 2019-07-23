@@ -34,7 +34,7 @@ int main(int argc, char const *argv[]) //IP server, Port server
     Server_Addr.sin_port = Port;
 
     //Connect to Server to get actual port
-    if ((Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
+    if ((Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
         printf("Socket created: %d\n", Socket);
     }
     else {

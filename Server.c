@@ -8,8 +8,6 @@ int main(int argc, char const *argv[]) // port
     char Port_Str[PORT_LENGTH];
     int Port;
 
-    pthread_t Tid;
-
     int Server_Socket;
     int Client_Socket;
 
@@ -30,7 +28,7 @@ int main(int argc, char const *argv[]) // port
     Server_Addr.sin_port = Port;
 
     //init socket
-    if ((Server_Socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0) {
+    if ((Server_Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0) {
         printf("Socket created: %d\n", Server_Socket);
     }
     else {
@@ -50,6 +48,7 @@ int main(int argc, char const *argv[]) // port
     while (1) {
         //start listen
         bzero(&Client_Addr, sizeof(struct sockaddr_in));
+        listen(Server_Socket, MAX_CLIENTS);
         //get message from any client
 
         if ((Client_Socket = accept(Server_Socket,
@@ -61,13 +60,31 @@ int main(int argc, char const *argv[]) // port
             printf("Recieving error: %s\n", strerror(errno));
             exit(3);
         }
-        if (pthread_create(&Tid, NULL, Server_Thread, &Client_Socket) == 0) {
-            printf("Thread %d was created to work with %d\n", Tid,
-                   Client_Socket);
+
+        if (recv(Client_Socket, Message, MSG_LEN, NO_FLAGS) > 0) {
+            printf("Recieved from client: %s\n", Message);
         }
         else {
-            printf("Error creare Thread: %s\n", strerror(errno));
+            printf("Error on recieving message: %s\n", strerror(errno));
             exit(4);
+        }
+        //change message
+        *Message = '7';
+        //send message to client
+        if (send(Client_Socket, Message, strlen(Message), NO_FLAGS) > 0) {
+            printf("Send to client: %s\n", Message);
+        }
+        else {
+            printf("Error on sendig message: %s\n", strerror(errno));
+            exit(5);
+        }
+        //remove socket
+        if (shutdown(Client_Socket, SHUT_RDWR) == 0) {
+            printf("Successfully shutdown socket\n");
+        }
+        else {
+            printf("Error on shutdown socket: %s\n", strerror(errno));
+            exit(6);
         }
     }
     return 0;
