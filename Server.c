@@ -64,10 +64,10 @@ int main(int argc, char const *argv[]) // port
         //send message to client
         if (sendto(Server_Socket, Message, strlen(Message), MSG_CONFIRM,
                    (struct sockaddr *) &Client_Addr, Client_Addr_Len) > 0) {
-            printf("Thread Send to client: %s\n", Message);
+            printf("Send to client: %s\n", Message);
         }
         else {
-            printf("Thread Error on sendig message: %s\n", strerror(errno));
+            printf("Error on sendig message: %s\n", strerror(errno));
             exit(4);
         }
     }

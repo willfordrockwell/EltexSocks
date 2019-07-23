@@ -3,7 +3,6 @@ CC = gcc
 
 SOURCES_SERVER = Server.c
 SOURCES_SERVER += Get_Port.c
-SOURCES_SERVER += Server_Thread.c
 OBJECTS_SERVER = $(SOURCES_SERVER:.c=.o)
 EXECUTABLE_SERVER = Server
 
