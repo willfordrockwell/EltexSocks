@@ -8,6 +8,8 @@ int main(int argc, char const *argv[]) // port
     char Port_Str[PORT_LENGTH];
     int Port;
 
+    int Flag = 1;
+    
     int Server_Socket;
 
     struct sockaddr_in Server_Addr, Client_Addr;
@@ -34,6 +36,7 @@ int main(int argc, char const *argv[]) // port
         printf("Error creating socket: %s\n", strerror(errno));
         exit(1);
     }
+    setsockopt(Server_Socket, SOL_SOCKET, SO_REUSEADDR, &Flag, sizeof(Flag));
     //binding
     if (bind(Server_Socket, (struct sockaddr *) &Server_Addr,
              sizeof(Server_Addr)) >= 0) {
@@ -48,6 +51,7 @@ int main(int argc, char const *argv[]) // port
         //start listen
         bzero(&Client_Addr, sizeof(struct sockaddr_in));
         //get message from any client
+        memset(Message, 0, MSG_LEN);
         if ((recvfrom(Server_Socket, Message, MSG_LEN, MSG_WAITALL,
                       (struct sockaddr *) &Client_Addr, &Client_Addr_Len))
             >= 0) {
